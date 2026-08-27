@@ -102,6 +102,11 @@ button{font-family:inherit;}
 .pcalc label{font:600 10px/1 'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);}
 .pcalc .val{font:600 17px 'IBM Plex Mono',monospace;color:var(--green);padding:2px 0;border-bottom:2px solid var(--green-soft);}
 
+.view-tabs{border-bottom:1px solid var(--grid);background:var(--panel);}
+.view-tabs-inner{max-width:1180px;margin:0 auto;padding:10px 20px 0;display:flex;gap:8px;}
+.view-tabs button{border:1.5px solid var(--grid);border-bottom:none;background:var(--paper);color:var(--ink-soft);border-radius:8px 8px 0 0;padding:8px 16px;font:600 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer;}
+.view-tabs button.on{background:var(--panel);color:var(--ink);border-color:var(--ink);position:relative;top:1px;}
+.selected-total{margin-top:16px;padding-top:14px;border-top:2px solid var(--ink);font:600 15px 'Space Grotesk',sans-serif;text-align:right;}
 .filters-wrap{border-bottom:1px solid var(--grid);background:rgba(255,255,255,0.5);}
 .filters{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .search-wrap{position:relative;flex:1 1 200px;min-width:160px;}
@@ -246,6 +251,11 @@ button{font-family:inherit;}
 .wtoggle button.on{background:var(--blue);border-color:var(--blue);color:#fff;}
 .wcheck label{display:flex;align-items:center;gap:8px;font:400 13px 'IBM Plex Sans',sans-serif;cursor:pointer;}
 .wnote{font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);background:var(--paper);border-radius:8px;padding:10px 12px;line-height:1.5;}
+.project-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;}
+.project-row.active{border-color:var(--blue);background:var(--blue-soft);}
+.project-name{font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ink);}
+.project-meta{font:400 11.5px 'IBM Plex Mono',monospace;color:var(--ink-soft);margin-top:2px;}
+.project-actions{display:flex;gap:6px;flex:0 0 auto;}
 .wizard-actions{display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--grid);}
 .wizard-actions button{border:none;border-radius:8px;padding:10px 16px;font:600 13px 'IBM Plex Sans',sans-serif;cursor:pointer;}
 .wizard-save{flex:1;background:var(--blue);color:#fff;}
@@ -325,17 +335,50 @@ const {useState,useMemo,useEffect,useRef} = React;
 const BASE_CATALOG = JSON.parse(document.getElementById('catalog-data').textContent);
 const PRIV_OPTIONS = ['Sпола','Периметр','Sстен','Плинтус','Откосы','Кол-во проёмов','—'];
 const CUSTOM_SECTION = 'СВОИ ПОЗИЦИИ';
-const STORAGE_KEY = 'smeta-calc-v1';
+const PROJECTS_KEY = 'smeta-projects-v1';
+const LEGACY_KEY = 'smeta-calc-v1'; // старый единый формат (одна смета) — используется только для миграции при первом запуске новой версии
 let customSeq = 100000;
 
-function loadSaved(){
+function genProjectId(){ return 'p'+Math.random().toString(36).slice(2); }
+
+// Загружает сохранённое состояние в новом формате (список смет + общий прайс-лист).
+// Если найден только старый формат (одна смета) — превращает её в первую запись списка.
+// Если не найдено вообще ничего — создаёт единственный новый проект по умолчанию.
+// Возвращает ВСЕГДА полностью готовую структуру (никогда null), чтобы не гонять эту логику по разным местам.
+function loadSavedState(){
   try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) return null;
-    const parsed = JSON.parse(raw);
-    if(parsed && typeof parsed==='object' && Array.isArray(parsed.rooms) && parsed.rooms.length) return parsed;
-    return null;
-  }catch(e){ return null; }
+    const raw = localStorage.getItem(PROJECTS_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.projects) && parsed.projects.length){
+        const projects = parsed.projects.map(p=>({...p, rooms:(p.rooms||[]).map(migrateRoom)}));
+        const activeProjectId = parsed.activeProjectId && projects.some(p=>p.id===parsed.activeProjectId)
+          ? parsed.activeProjectId : projects[0].id;
+        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects, activeProjectId};
+      }
+    }
+  }catch(e){}
+  try{
+    const raw = localStorage.getItem(LEGACY_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && Array.isArray(parsed.rooms) && parsed.rooms.length){
+        const id = genProjectId();
+        const proj = {
+          id, name: parsed.objName || 'Объект без названия',
+          rooms: parsed.rooms.map(migrateRoom), discount: parsed.discount||0,
+          objMeta: parsed.objMeta||'', active: parsed.active||0, updatedAt: parsed.savedAt||Date.now(),
+        };
+        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects:[proj], activeProjectId:id};
+      }
+    }
+  }catch(e){}
+  const id = genProjectId();
+  return {
+    overrides:{}, customRows:[], hidden:{},
+    projects:[{id, name:'Объект без названия', rooms:initialRooms(), discount:0, objMeta:'', active:0, updatedAt:Date.now()}],
+    activeProjectId:id,
+  };
 }
 
 const fmt = n => n==null||isNaN(n) ? '' : n.toLocaleString('ru-RU',{maximumFractionDigits:0});
@@ -471,41 +514,48 @@ function autoQty(priv,c){
 const emptyForm = {name:'',unit:'м2',priv:'Sпола',price:'',tag:'Прочее',kind:'work'};
 
 function App(){
-  const saved = useMemo(loadSaved,[]);
+  const saved = useMemo(loadSavedState,[]);
+  const initialActiveProject = saved.projects.find(p=>p.id===saved.activeProjectId) || saved.projects[0];
   const [customRows,setCustomRows] = useState(()=>{
-    const rows = saved?.customRows ?? [];
+    const rows = saved.customRows;
     const maxId = rows.reduce((m,r)=>Math.max(m,r[0]),customSeq-1);
     customSeq = maxId+1;
     return rows;
   });
-  const [overrides,setOverrides] = useState(()=>saved?.overrides ?? {});   // id -> {name,unit,priv,price,tag}
-  const [hidden,setHidden] = useState(()=>saved?.hidden ?? {});
+  const [overrides,setOverrides] = useState(()=>saved.overrides);   // id -> {name,unit,priv,price,tag}
+  const [hidden,setHidden] = useState(()=>saved.hidden);
   const [showHiddenPanel,setShowHiddenPanel] = useState(false);
   const [editingId,setEditingId] = useState(null);  // null = закрыто, 'new' = добавление, число = редактирование
   const [form,setForm] = useState(emptyForm);
-  const [rooms,setRooms] = useState(()=>(saved?.rooms && saved.rooms.length) ? saved.rooms.map(migrateRoom) : initialRooms());
-  const [active,setActive] = useState(()=>{
-    const len = (saved?.rooms && saved.rooms.length) ? saved.rooms.length : initialRooms().length;
-    const a = saved?.active ?? 0;
-    return Math.min(Math.max(a,0), len-1);
-  });
+  const [projects,setProjects] = useState(()=>saved.projects); // список всех смет в этом браузере
+  const [activeProjectId,setActiveProjectId] = useState(()=>initialActiveProject.id);
+  const [rooms,setRooms] = useState(()=>initialActiveProject.rooms);
+  const [active,setActive] = useState(()=>Math.min(Math.max(initialActiveProject.active||0,0), initialActiveProject.rooms.length-1));
   const [tagFilter,setTagFilter] = useState('Все');
   const [search,setSearch] = useState('');
   const [openSection,setOpenSection] = useState(null); // null = экран выбора этапа
-  const [discount,setDiscount] = useState(()=>saved?.discount ?? 0);
-  const [objName,setObjName] = useState(()=>saved?.objName ?? 'Объект без названия');
-  const [objMeta,setObjMeta] = useState(()=>saved?.objMeta ?? '');
+  const [viewMode,setViewMode] = useState('catalog'); // 'catalog' | 'selected' — просмотр уже отмеченных позиций без экспорта/печати
+  const [discount,setDiscount] = useState(()=>initialActiveProject.discount ?? 0);
+  const [objName,setObjName] = useState(()=>initialActiveProject.name || 'Объект без названия');
+  const [objMeta,setObjMeta] = useState(()=>initialActiveProject.objMeta ?? '');
   const [stampOpen,setStampOpen] = useState(true);
   const [toolsExpanded,setToolsExpanded] = useState(false); // на мобильном панель инструментов свёрнута по умолчанию — иначе съедает весь экран (topbar прилипающий)
-  const [lastSaved,setLastSaved] = useState(()=>saved?.savedAt ?? null);
+  const [projectsOpen,setProjectsOpen] = useState(false); // модалка «Мои сметы»
+  const [lastSaved,setLastSaved] = useState(null);
+
+  // Синхронизация: как только меняется рабочее состояние текущей сметы — обновляем её запись
+  // в общем списке проектов (список — это то, что реально сохраняется и показывается в «Мои сметы»).
+  useEffect(()=>{
+    setProjects(ps=>ps.map(p=>p.id===activeProjectId ? {...p, name:objName, rooms, discount, objMeta, active, updatedAt:Date.now()} : p));
+  },[rooms,discount,objName,objMeta,active,activeProjectId]);
 
   useEffect(()=>{
-    const state = {customRows,overrides,hidden,rooms,active,discount,objName,objMeta,savedAt:Date.now()};
+    const state = {version:2, overrides, customRows, hidden, projects, activeProjectId, savedAt:Date.now()};
     try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(state));
       setLastSaved(state.savedAt);
     }catch(e){ /* хранилище недоступно или переполнено — работа продолжается без сохранения */ }
-  },[customRows,overrides,hidden,rooms,active,discount,objName,objMeta]);
+  },[overrides,customRows,hidden,projects,activeProjectId]);
 
   // ---- Undo/redo (Ctrl+Z / Ctrl+Shift+Z): история снимков состава сметы. Не трогает чисто
   // навигационные вещи (какая вкладка/раздел открыты) — только то, что реально меняет смету. ----
@@ -581,6 +631,31 @@ function App(){
   const canUndo = historyRef.current.past.length>0 || pendingBaseRef.current!==null;
   const canRedo = historyRef.current.future.length>0;
 
+  // ---- Клавиатурная навигация по списку позиций: стрелки перемещают фокус между чекбоксами
+  // строк (тот же принцип, что в таблицах — "roving tabindex"), Home/End — к первой/последней
+  // видимой строке. Space/Enter уже переключают чекбокс (обработчик на самой строке). ----
+  useEffect(()=>{
+    function onKeyDown(e){
+      const active = document.activeElement;
+      if(!active || !active.classList || !active.classList.contains('chk')) return; // работаем только когда фокус уже на чекбоксе строки
+      if(!['ArrowDown','ArrowUp','Home','End'].includes(e.key)) return;
+      const all = Array.from(document.querySelectorAll('.main .chk'));
+      const idx = all.indexOf(active);
+      if(idx===-1) return;
+      e.preventDefault();
+      let nextIdx = idx;
+      if(e.key==='ArrowDown') nextIdx = Math.min(idx+1, all.length-1);
+      else if(e.key==='ArrowUp') nextIdx = Math.max(idx-1, 0);
+      else if(e.key==='Home') nextIdx = 0;
+      else if(e.key==='End') nextIdx = all.length-1;
+      const target = all[nextIdx];
+      target.focus();
+      target.scrollIntoView({block:'center', behavior:'smooth'});
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return ()=>window.removeEventListener('keydown', onKeyDown);
+  },[]);
+
   const skipUnloadWarnRef = useRef(false); // зарезервировано на случай, если снова понадобится программный reload/переход в обход предупреждения браузера
   useEffect(()=>{
     const onBeforeUnload = e=>{
@@ -596,13 +671,42 @@ function App(){
   // «Новый проект» сбрасывает только сам объект (помещения, позиции, скидку) — прайс-лист
   // (изменённые цены, свои позиции, скрытые из каталога) переживает любое количество проектов,
   // так как это наработка сметчика, а не часть конкретной сметы.
+  // «Мои сметы»: каждый проект хранит своё состояние (помещения, позиции, скидка, название) отдельно
+  // от прайс-листа (он общий на все проекты). Переключение между проектами обязательно сбрасывает
+  // историю undo/redo — она принадлежит только одному проекту одновременно, иначе Ctrl+Z после
+  // переключения мог бы затереть данные ДРУГОГО проекта.
+  function loadProjectIntoState(target){
+    historyRef.current = {past:[], future:[]};
+    currentSnapshotRef.current = null;
+    pendingBaseRef.current = null;
+    isRestoringRef.current = false;
+    if(historyDebounceRef.current){ clearTimeout(historyDebounceRef.current); historyDebounceRef.current = null; }
+    setRooms(target.rooms);
+    setDiscount(target.discount ?? 0);
+    setObjMeta(target.objMeta ?? '');
+    setObjName(target.name || 'Объект без названия');
+    setActive(Math.min(Math.max(target.active||0,0), (target.rooms||[]).length-1));
+    setActiveProjectId(target.id);
+  }
+  function switchProject(id){
+    const target = projects.find(p=>p.id===id);
+    if(target) loadProjectIntoState(target);
+    setProjectsOpen(false);
+  }
   function newProject(){
-    if(!window.confirm('Начать новый проект? Помещения, позиции и скидка будут сброшены. Ваш прайс-лист (изменённые цены, добавленные позиции, скрытые из каталога) сохранится.')) return;
-    setRooms(initialRooms());
-    setDiscount(0);
-    setObjName('Объект без названия');
-    setObjMeta('');
-    setActive(0);
+    const proj = {id:genProjectId(), name:'Объект без названия', rooms:initialRooms(), discount:0, objMeta:'', active:0, updatedAt:Date.now()};
+    setProjects(ps=>[...ps, proj]);
+    loadProjectIntoState(proj);
+    setProjectsOpen(false);
+  }
+  function deleteProject(id){
+    if(projects.length<=1){ alert('Нельзя удалить последнюю смету — должна остаться хотя бы одна.'); return; }
+    const proj = projects.find(p=>p.id===id);
+    if(!proj) return;
+    if(!window.confirm(`Удалить смету «${proj.name||'Без названия'}»? Это действие нельзя отменить.`)) return;
+    const remaining = projects.filter(p=>p.id!==id);
+    setProjects(remaining);
+    if(id===activeProjectId) loadProjectIntoState(remaining[0]);
   }
   function resetPriceList(){
     if(!window.confirm('Сбросить прайс-лист к заводскому состоянию? Изменённые цены, добавленные позиции и скрытые из каталога вернутся к исходным. Если такие позиции уже используются в текущей смете, это повлияет на её итог.')) return;
@@ -1400,7 +1504,7 @@ function App(){
                 <button className="btn-tool" onClick={exportData} title="Скачать файл сметы (.json) — можно открыть на другом устройстве или сохранить как резервную копию">Экспорт JSON</button>
                 <button className="btn-tool" onClick={exportExcel} title="Скачать смету в формате Excel (.xlsx) — сводка + отдельный лист на каждое помещение">Excel</button>
                 <button className="btn-tool" onClick={triggerImport} title="Загрузить смету из ранее экспортированного файла .json">Импорт</button>
-                <button className="btn-tool btn-newproj" onClick={newProject} title="Сбросить помещения, позиции и скидку. Прайс-лист (цены, свои позиции) сохранится">Новый проект</button>
+                <button className="btn-tool" onClick={()=>setProjectsOpen(true)} title="Список всех смет в этом браузере — переключиться, создать новую или удалить">📁 Мои сметы</button>
                 <span className="tools-group-label">Прайс-лист:</span>
                 <input type="file" accept="application/json" ref={importPriceListInputRef} style={{display:'none'}} onChange={handleImportPriceListFile}/>
                 <input type="file" accept=".xlsx" ref={importPriceListExcelInputRef} style={{display:'none'}} onChange={handleImportPriceListExcel}/>
@@ -1476,6 +1580,14 @@ function App(){
         </div>
       </div>
 
+      <div className="view-tabs">
+        <div className="view-tabs-inner">
+          <button className={viewMode==='catalog'?'on':''} onClick={()=>setViewMode('catalog')}>Каталог</button>
+          <button className={viewMode==='selected'?'on':''} onClick={()=>setViewMode('selected')}>✓ Выбрано{totals[active].items.length>0?` (${totals[active].items.length})`:''}</button>
+        </div>
+      </div>
+
+      {viewMode==='catalog' &&
       <div className="filters-wrap">
         <div className="filters">
           <div className="search-wrap">
@@ -1505,13 +1617,14 @@ function App(){
               Скрытые<span className="n">{hiddenList.length}</span>
             </div>}
         </div>
-      </div>
+      </div>}
 
+      {viewMode==='catalog' &&
       <div className="addbar">
         <button className="addbtn" onClick={()=> isFormOpen && editingId==='new' ? closeForm() : openAdd()}>
           {isFormOpen && editingId==='new' ? 'Отмена' : '+ Добавить свою работу'}
         </button>
-      </div>
+      </div>}
       {isFormOpen &&
         <div className="wizard-overlay" onMouseDown={e=>{ if(e.target===e.currentTarget) closeForm(); }}>
           <div className="editform-modal">
@@ -1568,7 +1681,24 @@ function App(){
         </div>}
 
       <div className="main">
-        {browsingMode ? (
+        {viewMode==='selected' ? (
+          totals[active].items.length===0 ? (
+            <div className="empty-hint">В этом помещении ещё нет отмеченных позиций. Переключитесь на «Каталог», чтобы что-то выбрать.</div>
+          ) : (
+            <>
+              {groupBySection(totals[active].items).map(([sec,items])=>(
+                <div key={sec}>
+                  <div className="section-head"><h2>{sec}</h2></div>
+                  {items.map(it=>{
+                    const row = ALL_ROWS.find(r=>r[0]===it.id);
+                    return row ? renderRow(row) : null;
+                  })}
+                </div>
+              ))}
+              <div className="selected-total">Итого по помещению «{room.name}»: {fmt(totals[active].sum)} ₽</div>
+            </>
+          )
+        ) : browsingMode ? (
           openSection===null ? (
             <div className="stage-picker">
               <div className="stage-picker-title">Выберите этап работ</div>
@@ -1804,6 +1934,36 @@ function App(){
           </div>
         </div>}
 
+      {projectsOpen &&
+        <div className="wizard-overlay" onMouseDown={e=>{ if(e.target===e.currentTarget) setProjectsOpen(false); }}>
+          <div className="wizard-modal">
+            <div className="wizard-head">
+              <h3>Мои сметы</h3>
+              <button className="wizard-close" onClick={()=>setProjectsOpen(false)} aria-label="Закрыть">×</button>
+            </div>
+            <div className="wizard-body">
+              <div className="wnote">Все сметы хранятся в этом браузере на этом устройстве. Прайс-лист (цены, свои позиции) — общий на все сметы сразу.</div>
+              <button className="btn-tool" onClick={newProject} style={{alignSelf:'flex-start'}}>+ Новая смета</button>
+              {projects.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(p=>{
+                const projSum = (p.rooms||[]).reduce((a,r)=>a+roomTotal(r).sum,0);
+                const isActive = p.id===activeProjectId;
+                return (
+                  <div key={p.id} className={"project-row"+(isActive?' active':'')}>
+                    <div className="project-info">
+                      <div className="project-name">{p.name||'Без названия'}{isActive?' — текущая':''}</div>
+                      <div className="project-meta">{(p.rooms||[]).length} помещ. · {fmt(projSum)} ₽ · {p.updatedAt?new Date(p.updatedAt).toLocaleDateString('ru-RU'):''}</div>
+                    </div>
+                    <div className="project-actions">
+                      {!isActive && <button className="btn-tool" onClick={()=>switchProject(p.id)}>Открыть</button>}
+                      <button className="btn-tool btn-newproj" onClick={()=>deleteProject(p.id)} title="Удалить смету" aria-label={`Удалить смету: ${p.name}`}>🗑</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>}
+
       <div className={"print-only"+(printMode==='smeta'?' active':'')}>
         <div className="pr-page">
           <div className="pr-h1">Смета — {objName}</div>
@@ -1921,8 +2081,6 @@ function App(){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 <script>
-  // Регистрация service worker — работает только по https:// (или localhost), поэтому не мешает,
-  // если файл всё ещё открывают локально (там просто ничего не произойдёт).
   if('serviceWorker' in navigator){
     window.addEventListener('load', ()=>{
       navigator.serviceWorker.register('./service-worker.js').catch(()=>{ /* офлайн-кеш не критичен для работы самого приложения */ });
