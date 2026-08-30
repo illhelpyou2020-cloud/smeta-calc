@@ -1457,13 +1457,12 @@ function App(){
     const qtyInvalid = qVal!=='' && (isNaN(qty) || qty<0);
     const sum = (on&&!qtyInvalid&&qty!=null&&!isNaN(qty)&&price!=null) ? qty*price : null;
     return (
-      <div key={id} id={"row-"+id} className={"row"+(on?' checked':'')+(isCustom?' custom':'')+(isOverridden?' overridden':'')+(highlightId===id?' highlight':'')}>
+      <div key={id} id={"row-"+id} className={"row"+(on?' checked':'')+(isOverridden?' overridden':'')+(highlightId===id?' highlight':'')}>
         <div className="rmain">
           <div className={"chk"+(on?' on':'')} role="checkbox" aria-checked={!!on} tabIndex={0}
             onClick={()=>toggleRow(id)}
             onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleRow(id); } }}>{on?'✓':''}</div>
           <div className="rname">{name}
-            {isCustom && <span className="badge">своя</span>}
             {isOverridden && <span className="badge edit" title={`Цена каталога: ${origPrice!=null?fmt(origPrice)+' ₽':'—'} · Цена в этой смете: ${price!=null?fmt(price)+' ₽':'—'}`}>изменена</span>}
           </div>
           <div className="ractions">
