@@ -295,7 +295,7 @@ button{font-family:inherit;}
 }
 @media print{
   body{background:#fff;}
-  .topbar,.params-wrap,.filters-wrap,.addbar,.main,.stamp,.stamp-pill,.hiddenpanel,.wizard-overlay,.undo-toast{display:none!important;}
+  .topbar,.params-wrap,.filters-wrap,.view-tabs,.addbar,.main,.stamp,.stamp-pill,.hiddenpanel,.wizard-overlay,.undo-toast{display:none!important;}
   .print-only.active{display:block!important;}
   .pr-page{max-width:800px;margin:0 auto;padding:16px;font-family:'IBM Plex Sans',sans-serif;color:#111;}
   .pr-h1{font:700 22px 'Space Grotesk',sans-serif;margin:0 0 2px;}
@@ -1988,7 +1988,7 @@ function App(){
         <div className="pr-page">
           <div className="pr-h1">Смета — {objName}</div>
           {objMeta.trim() && <div className="pr-sub" style={{marginBottom:2}}>{objMeta.trim()}</div>}
-          <div className="pr-sub">Составлено {new Date().toLocaleDateString('ru-RU')} · только отмеченные позиции</div>
+          <div className="pr-sub">Составлено {new Date().toLocaleDateString('ru-RU')}</div>
           {rooms.map((rm,i)=>{
             const cc = computed(rm); const items = totals[i].items;
             if(!items.length) return null;
