@@ -139,7 +139,6 @@ button{font-family:inherit;}
 .aform-actions button{border:none;border-radius:8px;padding:10px 16px;font:600 13px 'IBM Plex Sans',sans-serif;cursor:pointer;}
 .btn-save{background:var(--accent);color:#fff;}
 .btn-cancel{background:var(--grid);color:var(--ink-soft);}
-.btn-reset{background:none;border:1px solid var(--red)!important;color:var(--red);}
 
 .main{max-width:1180px;margin:0 auto;padding:18px 20px 100px;}
 .section-head{display:flex;align-items:baseline;gap:10px;margin:26px 0 8px;padding-bottom:6px;border-bottom:3px solid var(--accent);}
@@ -164,7 +163,6 @@ button{font-family:inherit;}
 .row.checked{background:var(--accent-soft);}
 .row.checked:hover{background:var(--accent-soft);}
 .row.custom{background:var(--green-soft);}
-.row.overridden{background:#FFFBF0;}
 .row.highlight{background:var(--accent-soft);box-shadow:inset 0 0 0 2px var(--accent);transition:background 0.4s,box-shadow 0.4s;}
 .rmain{display:flex;align-items:flex-start;gap:8px;}
 .chk{width:18px;height:18px;border:2px solid var(--ink-soft);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:var(--panel);flex:0 0 auto;margin-top:2px;}
@@ -217,11 +215,6 @@ button{font-family:inherit;}
 .discount-custom::placeholder{color:#7C8FB5;}
 .stamp-meta-input{background:none;border:none;color:#9FB3D9;width:100%;padding:0;margin-top:4px;font:400 11px 'IBM Plex Sans',sans-serif;}
 .stamp-meta-input::placeholder{color:#7C8FB5;}
-.override-warn{width:100%;font:500 11.5px 'IBM Plex Sans',sans-serif;color:#8A6412;background:#FFF1CC;border-radius:6px;padding:6px 10px;margin:-2px 0 2px;}
-.override-compare{width:100%;background:#FFF8E6;border:1px solid #FFE8A8;border-radius:8px;padding:10px 12px;margin:-2px 0 2px;}
-.override-row{display:flex;justify-content:space-between;font:400 13px 'IBM Plex Sans',sans-serif;padding:3px 0;color:var(--ink-soft);}
-.override-row b{font:600 13px 'IBM Plex Mono',monospace;color:var(--ink);}
-.override-row b.cur{color:#8A6412;}
 .stamp-actions{display:flex;gap:8px;padding:0 14px 14px;}
 .stamp-actions button{flex:1;padding:8px 0;border-radius:6px;border:none;cursor:pointer;font:600 11.5px 'IBM Plex Sans',sans-serif;}
 .act-print{background:#fff;color:var(--stamp);}
@@ -512,7 +505,7 @@ function autoQty(priv,c){
   if(priv==='Кол-во проёмов') return c.КолПроемов;
   return null;
 }
-const emptyForm = {name:'',unit:'м2',priv:'Sпола',price:'',tag:'Прочее',kind:'work'};
+const emptyForm = {name:'',unit:'м2',priv:'—',price:'',tag:'Прочее',kind:'work'};
 
 function App(){
   const saved = useMemo(loadSavedState,[]);
@@ -539,7 +532,7 @@ function App(){
   const [discount,setDiscount] = useState(()=>initialActiveProject.discount ?? 0);
   const [objName,setObjName] = useState(()=>initialActiveProject.name || 'Объект без названия');
   const [objMeta,setObjMeta] = useState(()=>initialActiveProject.objMeta ?? '');
-  const [stampOpen,setStampOpen] = useState(true);
+  const [stampOpen,setStampOpen] = useState(()=> typeof window==='undefined' || window.innerWidth>820); // на мобильном по умолчанию свёрнута — иначе перекрывает весь экран, в том числе подсказку для нового пользователя
   const [toolsExpanded,setToolsExpanded] = useState(false); // на мобильном панель инструментов свёрнута по умолчанию — иначе съедает весь экран (topbar прилипающий)
   const [projectsOpen,setProjectsOpen] = useState(false); // модалка «Мои сметы»
   const [lastSaved,setLastSaved] = useState(null);
@@ -813,25 +806,17 @@ function App(){
       return;
     }
     const wb = XLSX.utils.book_new();
-    const catalogRows = [['ID','Раздел','Название (исходное)','Ед. изм. (исходное)','Цена по умолчанию','Ваша цена','Скрыть (да/пусто)']];
-    BASE_CATALOG.forEach(r=>{
-      const [id,section,name,unit,,defPrice] = r;
-      const ov = overrides[id];
-      const yourPrice = ov && ov.price!=null ? ov.price : '';
-      catalogRows.push([id, section, name, unit, defPrice!=null?defPrice:'', yourPrice, hidden[id]?'да':'']);
-    });
-    const catalogSheet = XLSX.utils.aoa_to_sheet(catalogRows);
-    catalogSheet['!cols'] = [{wch:6},{wch:22},{wch:42},{wch:10},{wch:14},{wch:12},{wch:14}];
-    XLSX.utils.book_append_sheet(wb, catalogSheet, 'Каталог');
-
-    const customSheetRows = [['Название','Ед. изм.','Привязка','Цена','Тип (работа/материал)','Тег']];
+    // Раньше здесь был ещё лист «Каталог» — для сопоставления цен со встроенным базовым каталогом.
+    // Каталог теперь всегда пуст по умолчанию (у каждого пользователя свой прайс-лист с нуля),
+    // так что отдельный лист был бы всегда пустым и только сбивал бы с толку — убрали.
+    const rows = [['Раздел','Название','Ед. изм.','Привязка','Цена','Тип (работа/материал)','Тег']];
     customRows.forEach(r=>{
-      const [,,name,unit,priv,price,tag,kind] = r;
-      customSheetRows.push([name, unit, priv, price!=null?price:'', kind==='material'?'материал':'работа', tag||'']);
+      const [,section,name,unit,priv,price,tag,kind] = r;
+      rows.push([section, name, unit, priv, price!=null?price:'', kind==='material'?'материал':'работа', tag||'']);
     });
-    const customSheet = XLSX.utils.aoa_to_sheet(customSheetRows);
-    customSheet['!cols'] = [{wch:42},{wch:10},{wch:14},{wch:12},{wch:18},{wch:18}];
-    XLSX.utils.book_append_sheet(wb, customSheet, 'Свои позиции');
+    const sheet = XLSX.utils.aoa_to_sheet(rows);
+    sheet['!cols'] = [{wch:22},{wch:42},{wch:10},{wch:14},{wch:12},{wch:18},{wch:18}];
+    XLSX.utils.book_append_sheet(wb, sheet, 'Прайс-лист');
 
     XLSX.writeFile(wb, `pricelist_${new Date().toISOString().slice(0,10)}.xlsx`);
   }
@@ -854,10 +839,10 @@ function App(){
         alert('Не удалось прочитать файл. Убедитесь, что это .xlsx файл прайс-листа, экспортированный из этой же программы.');
         return;
       }
-      const catalogSheet = wb.Sheets['Каталог'];
-      const customSheet = wb.Sheets['Свои позиции'];
+      const catalogSheet = wb.Sheets['Каталог']; // старый формат — для файлов, экспортированных ещё когда каталог не был пустым по умолчанию
+      const customSheet = wb.Sheets['Прайс-лист'] || wb.Sheets['Свои позиции']; // новое имя листа, со страховкой на старое
       if(!catalogSheet && !customSheet){
-        alert('В файле не найдены листы «Каталог» или «Свои позиции». Убедитесь, что это файл прайс-листа, экспортированный из этой же программы.');
+        alert('В файле не найден лист «Прайс-лист». Убедитесь, что это файл прайс-листа, экспортированный из этой же программы.');
         return;
       }
       const hasCurrentCustomizations = Object.keys(overrides).length>0 || customRows.length>0 || Object.keys(hidden).length>0;
@@ -887,21 +872,28 @@ function App(){
       }
       const newCustomRows = [];
       if(customSheet){
-        const rows = XLSX.utils.sheet_to_json(customSheet, {header:1, range:1});
-        rows.forEach(row=>{
-          if(!row || row[0]==null || String(row[0]).trim()==='') return;
-          const name = String(row[0]).trim();
-          const unit = row[1]!=null && String(row[1]).trim()!=='' ? String(row[1]).trim() : 'шт';
-          const priv = row[2]!=null && String(row[2]).trim()!=='' && PRIV_OPTIONS.includes(String(row[2]).trim()) ? String(row[2]).trim() : '—';
+        // Определяем формат листа по заголовку: новый формат несёт раздел первым столбцом
+        // («Раздел»), старый — начинается сразу с «Название» (это было до убранного листа «Каталог»).
+        const allRows = XLSX.utils.sheet_to_json(customSheet, {header:1});
+        const header = allRows[0] || [];
+        const hasSectionColumn = header[0]!=null && String(header[0]).trim()==='Раздел';
+        const offset = hasSectionColumn ? 1 : 0;
+        allRows.slice(1).forEach(row=>{
+          if(!row) return;
+          const name = row[offset]!=null ? String(row[offset]).trim() : '';
+          if(!name) return;
+          const section = hasSectionColumn && row[0]!=null && String(row[0]).trim()!=='' ? String(row[0]).trim() : CUSTOM_SECTION;
+          const unit = row[offset+1]!=null && String(row[offset+1]).trim()!=='' ? String(row[offset+1]).trim() : 'шт';
+          const priv = row[offset+2]!=null && String(row[offset+2]).trim()!=='' && PRIV_OPTIONS.includes(String(row[offset+2]).trim()) ? String(row[offset+2]).trim() : '—';
           let priceVal = null;
-          if(row[3]!=null && String(row[3]).trim()!==''){
-            const parsed = toNum(String(row[3]));
+          if(row[offset+3]!=null && String(row[offset+3]).trim()!==''){
+            const parsed = toNum(String(row[offset+3]));
             if(!isNaN(parsed) && parsed>=0) priceVal = parsed; else skipped++;
           }
-          const kindRaw = row[4]!=null ? String(row[4]).trim().toLowerCase() : '';
+          const kindRaw = row[offset+4]!=null ? String(row[offset+4]).trim().toLowerCase() : '';
           const kind = kindRaw.startsWith('матер') ? 'material' : 'work';
-          const tag = row[5]!=null && String(row[5]).trim()!=='' ? String(row[5]).trim() : 'Прочее';
-          newCustomRows.push([customSeq++, CUSTOM_SECTION, name, unit, priv, priceVal, tag, kind]);
+          const tag = row[offset+5]!=null && String(row[offset+5]).trim()!=='' ? String(row[offset+5]).trim() : 'Прочее';
+          newCustomRows.push([customSeq++, section, name, unit, priv, priceVal, tag, kind]);
         });
       }
       setOverrides(newOverrides);
@@ -1189,12 +1181,6 @@ function App(){
     }
     closeForm();
   }
-  function resetOverride(){
-    if(typeof editingId==='number' && editingId<100000){
-      setOverrides(o=>{ const n={...o}; delete n[editingId]; return n; });
-    }
-    closeForm();
-  }
 
   const filtered = useMemo(()=>{
     let rows = visibleRows;
@@ -1204,7 +1190,7 @@ function App(){
   },[visibleRows,tagFilter,search]);
 
   const grouped = useMemo(()=>{
-    return SECTIONS.map(s=>[s,filtered.filter(r=>r[1]===s)]).filter(([,rs])=>rs.length);
+    return SECTIONS.map(s=>[s,filtered.filter(r=>r[1]===s).slice().sort((a,b)=>a[2].localeCompare(b[2],'ru'))]).filter(([,rs])=>rs.length);
   },[filtered,SECTIONS]);
 
   function roomPickedItems(rm){
@@ -1234,7 +1220,7 @@ function App(){
       if(!map.has(key)) map.set(key,[]);
       map.get(key).push(it);
     });
-    return [...map.entries()];
+    return [...map.entries()].map(([sec,its])=>[sec, its.slice().sort((a,b)=>a.name.localeCompare(b.name,'ru'))]);
   }
   // Свод по видам работ сразу по всем помещениям — сколько стоит демонтаж/электрика/полы и т.д. в целом по объекту.
   function workTypeSummary(){
@@ -1402,11 +1388,6 @@ function App(){
   }
 
   const isFormOpen = editingId!==null;
-  const isEditingCatalogItem = typeof editingId==='number' && editingId<100000;
-  const isEditingBase = isEditingCatalogItem && overrides[editingId];
-  const baseCatalogRow = isEditingBase ? BASE_CATALOG.find(r=>r[0]===editingId) : null;
-  const baseCatalogPrice = baseCatalogRow ? baseCatalogRow[5] : null;
-  const currentFormPrice = form.price!==''? toNum(form.price) : null;
 
   // Обычный сценарий (без поиска и без тега) идёт через выбор этапа: пользователю не нужно
   // сразу видеть все 200+ позиций каталога — только когда он ищет или фильтрует по тегу.
@@ -1421,7 +1402,7 @@ function App(){
   const searchSuggestions = useMemo(()=>{
     const q = search.trim().toLowerCase();
     if(!q) return [];
-    return visibleRows.filter(r=>r[2].toLowerCase().includes(q)).slice(0,8);
+    return visibleRows.filter(r=>r[2].toLowerCase().includes(q)).slice().sort((a,b)=>a[2].localeCompare(b[2],'ru')).slice(0,8);
   },[visibleRows,search]);
   const [highlightId,setHighlightId] = useState(null);
   function pickSuggestion(row){
@@ -1448,8 +1429,6 @@ function App(){
   function renderRow(row){
     const [id,,name,unit,priv,price] = row;
     const isCustom = id>=100000;
-    const isOverridden = !isCustom && overrides[id];
-    const origPrice = isOverridden ? (BASE_CATALOG.find(r=>r[0]===id)||[])[5] : null;
     const pick = room.picks[id]; const on = pick&&pick.on;
     const qVal = on ? (pick.qty!==''&&pick.qty!=null?pick.qty:'') : '';
     const auto = autoQty(priv,c);
@@ -1457,13 +1436,12 @@ function App(){
     const qtyInvalid = qVal!=='' && (isNaN(qty) || qty<0);
     const sum = (on&&!qtyInvalid&&qty!=null&&!isNaN(qty)&&price!=null) ? qty*price : null;
     return (
-      <div key={id} id={"row-"+id} className={"row"+(on?' checked':'')+(isOverridden?' overridden':'')+(highlightId===id?' highlight':'')}>
+      <div key={id} id={"row-"+id} className={"row"+(on?' checked':'')+(highlightId===id?' highlight':'')}>
         <div className="rmain">
           <div className={"chk"+(on?' on':'')} role="checkbox" aria-checked={!!on} tabIndex={0}
             onClick={()=>toggleRow(id)}
             onKeyDown={e=>{ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); toggleRow(id); } }}>{on?'✓':''}</div>
           <div className="rname">{name}
-            {isOverridden && <span className="badge edit" title={`Цена каталога: ${origPrice!=null?fmt(origPrice)+' ₽':'—'} · Цена в этой смете: ${price!=null?fmt(price)+' ₽':'—'}`}>изменена</span>}
           </div>
           <div className="ractions">
             <button className="ricon dup" title="Добавить похожую позицию" aria-label={`Добавить позицию похожую на: ${name}`} onClick={()=>duplicateAsNew(row)}>+</button>
@@ -1496,7 +1474,7 @@ function App(){
           <div className="brand">
             <div className="brand-mark"></div>
             <h1>Смета</h1>
-            <span>калькулятор · {visibleRows.length} позиций{hiddenList.length>0?` · скрыто ${hiddenList.length}`:''}</span>
+            <span>калькулятор · {visibleRows.length} {pluralRu(visibleRows.length,['позиция','позиции','позиций'])}{hiddenList.length>0?` · скрыто ${hiddenList.length}`:''}</span>
             <div className="topbar-tools">
               <button className="btn-tool" onClick={undo} disabled={!canUndo} title="Отменить последнее изменение (Ctrl+Z)">↶ Отменить</button>
               <button className="btn-tool" onClick={redo} disabled={!canRedo} title="Повторить отменённое изменение (Ctrl+Shift+Z)">↷ Повторить</button>
@@ -1633,18 +1611,10 @@ function App(){
         <div className="wizard-overlay" onMouseDown={e=>{ if(e.target===e.currentTarget) closeForm(); }}>
           <div className="editform-modal">
             <div className="wizard-head">
-              <h3>{editingId==='new' ? 'Новая позиция' : 'Редактирование позиции' + (typeof editingId==='number'&&editingId<100000 ? ' каталога' : '')}</h3>
+              <h3>{editingId==='new' ? 'Новая позиция' : 'Редактирование позиции'}</h3>
               <button className="wizard-close" onClick={closeForm} aria-label="Закрыть">×</button>
             </div>
             <div className="editform-body">
-              {isEditingCatalogItem && !isEditingBase &&
-                <div className="override-warn">⚠ Это позиция общего каталога. Изменения (название, цена, ед. изм.) применятся во всех помещениях, где эта позиция используется — не только в текущем.</div>}
-              {isEditingBase &&
-                <div className="override-compare">
-                  <div className="override-warn" style={{marginBottom:8}}>⚠ Эта позиция уже отличается от каталога — правки применятся во всех помещениях, где она используется.</div>
-                  <div className="override-row"><span>Цена каталога:</span><b>{baseCatalogPrice!=null?fmt(baseCatalogPrice)+' ₽':'—'}</b></div>
-                  <div className="override-row"><span>Цена в этой смете:</span><b className="cur">{currentFormPrice!=null && !isNaN(currentFormPrice)?fmt(currentFormPrice)+' ₽':'—'}</b></div>
-                </div>}
               <div className="afield name"><label>Название</label>
                 <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Например: Демонтаж старой сантехники"/></div>
               <div className="afield unit"><label>Ед. изм.</label>
@@ -1667,7 +1637,6 @@ function App(){
             </div>
             <div className="aform-actions">
               <button className="btn-save" onClick={submitForm}>{editingId==='new'?'Добавить':'Сохранить'}</button>
-              {isEditingBase && <button className="btn-reset" onClick={resetOverride}>Вернуть исходное</button>}
               <button className="btn-cancel" onClick={closeForm}>Отмена</button>
             </div>
           </div>
@@ -1725,7 +1694,7 @@ function App(){
                 {sectionSummary.map(s=>(
                   <button key={s.name} className="stage-card" onClick={()=>setOpenSection(s.name)}>
                     <span className="stage-name">{s.name}</span>
-                    <span className="stage-count">{s.total} позиций{s.picked>0?` · выбрано ${s.picked}`:''}</span>
+                    <span className="stage-count">{s.total} {pluralRu(s.total,['позиция','позиции','позиций'])}{s.picked>0?` · выбрано ${s.picked}`:''}</span>
                   </button>
                 ))}
               </div>
@@ -1737,7 +1706,7 @@ function App(){
               <div className="section-head">
                 <h2>{openSection}</h2>
               </div>
-              {visibleRows.filter(r=>r[1]===openSection).map(renderRow)}
+              {visibleRows.filter(r=>r[1]===openSection).slice().sort((a,b)=>a[2].localeCompare(b[2],'ru')).map(renderRow)}
             </div>
           )
         ) : (
