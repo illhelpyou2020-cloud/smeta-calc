@@ -247,6 +247,7 @@ button{font-family:inherit;}
 .wtoggle button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .wcheck label{display:flex;align-items:center;gap:8px;font:400 13px 'IBM Plex Sans',sans-serif;cursor:pointer;}
 .wnote{font:400 11.5px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);background:var(--paper);border-radius:8px;padding:10px 12px;line-height:1.5;}
+.projects-add-row{display:flex;gap:8px;flex-wrap:wrap;}
 .project-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;}
 .project-row.active{border-color:var(--accent);background:var(--accent-soft);}
 .project-name{font:600 13px 'IBM Plex Sans',sans-serif;color:var(--ink);}
@@ -692,6 +693,63 @@ function App(){
     setProjects(ps=>[...ps, proj]);
     loadProjectIntoState(proj);
     setProjectsOpen(false);
+  }
+  const importSmetaInputRef = useRef(null);
+  function triggerImportSmetaAsProject(){ importSmetaInputRef.current && importSmetaInputRef.current.click(); }
+  function handleImportSmetaAsProject(e){
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    if(/\.(xlsx|xls)$/i.test(file.name)){
+      alert(`Это файл Excel — выбран «${file.name}». Загрузить смету можно только из файла .json, экспортированного кнопкой «Экспорт JSON».`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      let data;
+      try{
+        data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.rooms) || !data.rooms.length) throw new Error('bad format');
+      }catch(err){
+        alert('Не удалось прочитать файл. Убедитесь, что это файл сметы, экспортированный из этой же программы (кнопка «Экспорт JSON»).');
+        return;
+      }
+      // «Свои позиции» из файла переносим в ОБЩИЙ прайс-лист (не заменяя его, а добавляя) — иначе
+      // отмеченные в импортированной смете позиции остались бы без цены/названия, ссылаясь в никуда.
+      // При этом id могут пересекаться с уже существующими своими позициями — переназначаем их
+      // на свежие номера и одновременно правим ссылки в отметках комнат на новые id.
+      const idMap = {};
+      const rowsToAdd = [];
+      (Array.isArray(data.customRows) ? data.customRows : []).forEach(r=>{
+        const oldId = r[0];
+        const newId = customSeq++;
+        idMap[oldId] = newId;
+        rowsToAdd.push([newId, r[1], r[2], r[3], r[4], r[5], r[6], r[7]]);
+      });
+      if(rowsToAdd.length) setCustomRows(cs=>[...cs, ...rowsToAdd]);
+      const remappedRooms = data.rooms.map(migrateRoom).map(room=>{
+        const newPicks = {};
+        Object.entries(room.picks||{}).forEach(([id,pick])=>{
+          const numId = Number(id);
+          const mappedId = idMap[numId]!==undefined ? idMap[numId] : numId;
+          newPicks[mappedId] = pick;
+        });
+        return {...room, picks:newPicks};
+      });
+      const proj = {
+        id: genProjectId(),
+        name: data.objName || 'Импортированный объект',
+        rooms: remappedRooms,
+        discount: typeof data.discount==='number' ? data.discount : 0,
+        objMeta: data.objMeta || '',
+        active: Math.min(Math.max(data.active||0,0), remappedRooms.length-1),
+        updatedAt: Date.now(),
+      };
+      setProjects(ps=>[...ps, proj]);
+      loadProjectIntoState(proj);
+      setProjectsOpen(false);
+    };
+    reader.readAsText(file);
   }
   function deleteProject(id){
     if(projects.length<=1){ alert('Нельзя удалить последнюю смету — должна остаться хотя бы одна.'); return; }
@@ -1940,7 +1998,11 @@ function App(){
             </div>
             <div className="wizard-body">
               <div className="wnote">Все сметы хранятся в этом браузере на этом устройстве. Прайс-лист (цены, свои позиции) — общий на все сметы сразу.</div>
-              <button className="btn-tool" onClick={newProject} style={{alignSelf:'flex-start'}}>+ Новая смета</button>
+              <div className="projects-add-row">
+                <button className="btn-tool" onClick={newProject}>+ Новая смета</button>
+                <input type="file" accept="application/json" ref={importSmetaInputRef} style={{display:'none'}} onChange={handleImportSmetaAsProject}/>
+                <button className="btn-tool" onClick={triggerImportSmetaAsProject} title="Загрузить смету из файла .json — добавится отдельной сметой в этот список, текущая работа не пострадает">⬆ Загрузить смету из файла</button>
+              </div>
               {projects.slice().sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).map(p=>{
                 const projSum = (p.rooms||[]).reduce((a,r)=>a+roomTotal(r).sum,0);
                 const isActive = p.id===activeProjectId;
