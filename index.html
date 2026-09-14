@@ -18,7 +18,12 @@
 :root{
   --ink:#1A2744; --ink-soft:#425073; --paper:#F7F3EA; --panel:#FFFFFF;
   --grid:#E3DCCB; --accent:#E1611E; --accent-soft:#FBE6D6; --red:#C4304F; --red-soft:#FBE8ED;
-  --green:#3F7A57; --green-soft:#E9F3EC; --stamp:#1A2744;
+  --green:#3F7A57; --green-soft:#E9F3EC; --stamp:#1A2744; --topbar-bg:rgba(247,243,234,0.92); --surface-tint:rgba(255,255,255,0.5);
+}
+:root[data-theme="dark"]{
+  --ink:#F2EEE6; --ink-soft:#B7AFA0; --paper:#171512; --panel:#242019;
+  --grid:#3A342C; --accent:#FF7A3D; --accent-soft:#3D2A1C; --red:#FF6B85; --red-soft:#3D1620;
+  --green:#6FC98D; --green-soft:#16301E; --stamp:#212B48; --topbar-bg:rgba(23,21,18,0.92); --surface-tint:rgba(36,32,25,0.5);
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
@@ -33,7 +38,7 @@ body{
 .mono{font-family:'IBM Plex Mono',monospace;}
 button{font-family:inherit;}
 
-.topbar{position:sticky;top:0;z-index:30;background:rgba(247,248,245,0.92);backdrop-filter:blur(6px);border-bottom:2px solid var(--ink);}
+.topbar{position:sticky;top:0;z-index:30;background:var(--topbar-bg);backdrop-filter:blur(6px);border-bottom:2px solid var(--ink);}
 .topbar-inner{max-width:1180px;margin:0 auto;padding:14px 20px 0;}
 .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
 .brand-mark{width:30px;height:30px;border:2.5px solid var(--ink);background:var(--accent);position:relative;flex-shrink:0;}
@@ -41,18 +46,23 @@ button{font-family:inherit;}
 .brand-mark::before{left:50%;top:2px;bottom:2px;width:2.5px;margin-left:-1.25px;}
 .brand-mark::after{top:50%;left:2px;right:2px;height:2.5px;margin-top:-1.25px;}
 .brand h1{font:700 23px/1 'Space Grotesk',sans-serif;margin:0;letter-spacing:-0.2px;}
+.theme-toggle{width:32px;height:32px;border:1.5px solid var(--grid);border-radius:50%;background:var(--panel);color:var(--ink-soft);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent);}
 .brand span{font:500 12px/1 'IBM Plex Mono',monospace;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.08em;}
 
 .tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:12px;scrollbar-width:thin;}
 .tabs-actions{display:flex;gap:8px;padding-bottom:12px;}
+.room-actions-wrap{position:relative;}
+.room-actions-menu{position:absolute;top:calc(100% + 6px);left:0;background:var(--panel);border:2px solid var(--ink);border-radius:8px;box-shadow:4px 4px 0 var(--ink);z-index:40;display:flex;flex-direction:column;min-width:240px;overflow:hidden;}
+.room-actions-menu button{text-align:left;padding:10px 14px;border:none;border-bottom:1px solid var(--grid);background:none;color:var(--ink);font:500 13px 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap;}
+.room-actions-menu button:last-child{border-bottom:none;}
+.room-actions-menu button:hover{background:var(--accent-soft);color:var(--accent);}
 .tab{flex:0 0 auto;padding:8px 14px;border:1.5px solid var(--grid);border-bottom:none;border-radius:6px 6px 0 0;background:var(--panel);cursor:pointer;font:500 13.5px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);display:flex;align-items:center;gap:8px;white-space:nowrap;}
 .tab.active{border-color:var(--ink);color:var(--ink);background:var(--paper);font-weight:600;position:relative;top:1px;border-bottom:1px solid var(--paper);}
 .tab .x{opacity:0.4;font-size:15px;line-height:1;padding:0 2px;}
 .tab .x:hover{opacity:1;color:var(--red);}
 .tab-add{flex:0 0 auto;width:34px;height:34px;border:1.5px dashed var(--grid);border-radius:6px;background:none;cursor:pointer;color:var(--ink-soft);font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;}
 .tab-add:hover{border-color:var(--accent);color:var(--accent);}
-.tab-dup{flex:0 0 auto;height:34px;padding:0 12px;border:1.5px dashed var(--grid);border-radius:6px;background:none;cursor:pointer;color:var(--ink-soft);font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;display:flex;align-items:center;gap:5px;}
-.tab-dup:hover{border-color:var(--green);color:var(--green);}
 .tab-copy{flex:0 0 auto;height:34px;padding:0 12px;border:1.5px dashed var(--grid);border-radius:6px;background:none;cursor:pointer;color:var(--ink-soft);font-size:12.5px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;display:flex;align-items:center;gap:5px;}
 .tab-copy:hover{border-color:var(--accent);color:var(--accent);}
 .topbar-tools{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;}
@@ -78,7 +88,9 @@ button{font-family:inherit;}
 .opening-row{display:flex;align-items:center;gap:8px;padding:5px 0;}
 .opening-type{width:76px;flex:0 0 auto;font:600 12px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);}
 .opening-type.door{color:#6B4A2B;}
+:root[data-theme="dark"] .opening-type.door{color:#D2905A;}
 .opening-type.window{color:#2F5AA8;}
+:root[data-theme="dark"] .opening-type.window{color:#7CA3E8;}
 .opening-row input{width:90px;border:1px solid var(--grid);border-radius:6px;padding:6px 8px;font:400 13px 'IBM Plex Mono',monospace;background:var(--paper);}
 .opening-x{color:var(--ink-soft);font:400 13px 'IBM Plex Sans',sans-serif;}
 .opening-area{flex:1;font:400 12px 'IBM Plex Mono',monospace;color:var(--ink-soft);}
@@ -107,7 +119,7 @@ button{font-family:inherit;}
 .view-tabs button{border:1.5px solid var(--grid);border-bottom:none;background:var(--paper);color:var(--ink-soft);border-radius:8px 8px 0 0;padding:8px 16px;font:600 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer;}
 .view-tabs button.on{background:var(--panel);color:var(--ink);border-color:var(--ink);position:relative;top:1px;}
 .selected-total{margin-top:16px;padding-top:14px;border-top:2px solid var(--ink);font:600 15px 'Space Grotesk',sans-serif;text-align:right;}
-.filters-wrap{border-bottom:1px solid var(--grid);background:rgba(255,255,255,0.5);}
+.filters-wrap{border-bottom:1px solid var(--grid);background:var(--surface-tint);}
 .filters{max-width:1180px;margin:0 auto;padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .search-wrap{position:relative;flex:1 1 200px;min-width:160px;}
 .search{width:100%;border:1.5px solid var(--grid);border-radius:20px;padding:7px 14px;font:400 13.5px 'IBM Plex Sans',sans-serif;background:var(--panel);}
@@ -118,8 +130,11 @@ button{font-family:inherit;}
 .ss-name{font:500 13px 'IBM Plex Sans',sans-serif;color:var(--ink);}
 .ss-meta{font:400 11px 'IBM Plex Mono',monospace;color:var(--ink-soft);white-space:nowrap;}
 .search:focus{outline:none;border-color:var(--accent);}
+.flat-toggle{display:flex;border:1.5px solid var(--grid);border-radius:20px;overflow:hidden;flex:0 0 auto;}
+.flat-toggle button{border:none;background:var(--panel);color:var(--ink-soft);padding:6px 13px;font:500 12.5px 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap;}
+.flat-toggle button.on{background:var(--accent);color:#fff;}
 .chip{border:1.5px solid var(--grid);border-radius:20px;padding:6px 13px;background:var(--panel);font:500 12.5px 'IBM Plex Sans',sans-serif;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
-.chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#fff;}
 .chip .n{opacity:0.65;font:500 11px 'IBM Plex Mono',monospace;margin-left:4px;}
 .chip.warn{border-color:var(--red);color:var(--red);}
 
@@ -178,8 +193,13 @@ button{font-family:inherit;}
 .rqty input:focus{outline:none;border-color:var(--accent);}
 .rqty input.auto{color:var(--ink-soft);background:transparent;border-color:transparent;}
 .rqty input.invalid{border-color:var(--red);background:var(--red-soft);color:var(--red);}
-.rprice{font:400 13px 'IBM Plex Mono',monospace;color:var(--ink-soft);}
-.rprice.missing{color:var(--red);font-weight:600;}
+.rprice{font:400 13px 'IBM Plex Mono',monospace;color:var(--ink-soft);display:flex;align-items:center;gap:3px;}
+.rprice input{width:76px;border:1px solid transparent;border-radius:5px;padding:5px 6px;font:400 13px 'IBM Plex Mono',monospace;text-align:right;color:var(--ink-soft);background:transparent;}
+.rprice input:hover{border-color:var(--grid);}
+.rprice input:focus{outline:none;border-color:var(--accent);background:var(--panel);color:var(--ink);}
+.rprice.missing input{color:var(--red);font-weight:600;}
+.rprice.missing input::placeholder{color:var(--red);font-weight:600;opacity:1;}
+.rprice-suffix{color:inherit;}
 .rsum{font:600 13.5px 'IBM Plex Mono',monospace;margin-left:auto;}
 .rsum.invalid{color:var(--red);font-weight:500;font-size:11.5px;}
 .ricon{width:24px;height:24px;border:none;background:none;color:var(--ink-soft);opacity:0.55;cursor:pointer;font-size:14px;border-radius:5px;display:flex;align-items:center;justify-content:center;}
@@ -193,6 +213,9 @@ button{font-family:inherit;}
 .hiddenpanel h3{margin:0 0 8px;font:600 13px 'Space Grotesk',sans-serif;}
 .hiditem{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font:400 13px 'IBM Plex Sans',sans-serif;border-bottom:1px dashed #E3B341;}
 .hiditem button{border:1px solid #E3B341;background:#fff;border-radius:5px;padding:4px 10px;font:600 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer;color:#8A6412;}
+:root[data-theme="dark"] .hiddenpanel{background:#332B14;border-color:#8A6412;color:var(--ink);}
+:root[data-theme="dark"] .hiditem{border-color:#8A6412;}
+:root[data-theme="dark"] .hiditem button{border-color:#8A6412;background:var(--panel);color:#E3B341;}
 
 /* ---------- stamp ---------- */
 .stamp{position:fixed;right:20px;bottom:max(20px, env(safe-area-inset-bottom));width:300px;background:var(--stamp);color:#fff;border-radius:8px;box-shadow:5px 5px 0 var(--accent);font-family:'IBM Plex Mono',monospace;overflow:hidden;z-index:40;transform:translateZ(0);-webkit-transform:translateZ(0);will-change:transform;}
@@ -228,7 +251,7 @@ button{font-family:inherit;}
 
 .print-only{display:none;}
 
-.undo-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:8px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;font:500 12.5px 'IBM Plex Sans',sans-serif;box-shadow:4px 4px 0 var(--accent);z-index:50;max-width:90vw;}
+.undo-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--stamp);color:#fff;border-radius:8px;padding:10px 10px 10px 16px;display:flex;align-items:center;gap:14px;font:500 12.5px 'IBM Plex Sans',sans-serif;box-shadow:4px 4px 0 var(--accent);z-index:50;max-width:90vw;}
 .undo-toast button{background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:5px;padding:5px 12px;font:600 11.5px 'IBM Plex Sans',sans-serif;cursor:pointer;white-space:nowrap;}
 .undo-toast button:hover{background:rgba(255,255,255,0.15);}
 
@@ -349,7 +372,7 @@ function loadSavedState(){
         const projects = parsed.projects.map(p=>({...p, rooms:(p.rooms||[]).map(migrateRoom)}));
         const activeProjectId = parsed.activeProjectId && projects.some(p=>p.id===parsed.activeProjectId)
           ? parsed.activeProjectId : projects[0].id;
-        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects, activeProjectId};
+        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects, activeProjectId, templates:parsed.templates||[]};
       }
     }
   }catch(e){}
@@ -364,7 +387,7 @@ function loadSavedState(){
           rooms: parsed.rooms.map(migrateRoom), discount: parsed.discount||0,
           objMeta: parsed.objMeta||'', active: parsed.active||0, updatedAt: parsed.savedAt||Date.now(),
         };
-        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects:[proj], activeProjectId:id};
+        return {overrides:parsed.overrides||{}, customRows:parsed.customRows||[], hidden:parsed.hidden||{}, projects:[proj], activeProjectId:id, templates:[]};
       }
     }
   }catch(e){}
@@ -372,7 +395,7 @@ function loadSavedState(){
   return {
     overrides:{}, customRows:[], hidden:{},
     projects:[{id, name:'Объект без названия', rooms:initialRooms(), discount:0, objMeta:'', active:0, updatedAt:Date.now()}],
-    activeProjectId:id,
+    activeProjectId:id, templates:[],
   };
 }
 
@@ -523,6 +546,8 @@ function App(){
   const [editingId,setEditingId] = useState(null);  // null = закрыто, 'new' = добавление, число = редактирование
   const [form,setForm] = useState(emptyForm);
   const [projects,setProjects] = useState(()=>saved.projects); // список всех смет в этом браузере
+  const [templates,setTemplates] = useState(()=>saved.templates); // шаблоны наборов позиций — общие на все сметы, как и прайс-лист
+  const [templatesOpen,setTemplatesOpen] = useState(false); // модалка «Шаблоны помещений»
   const [activeProjectId,setActiveProjectId] = useState(()=>initialActiveProject.id);
   const [rooms,setRooms] = useState(()=>initialActiveProject.rooms);
   const [active,setActive] = useState(()=>Math.min(Math.max(initialActiveProject.active||0,0), initialActiveProject.rooms.length-1));
@@ -530,12 +555,36 @@ function App(){
   const [search,setSearch] = useState('');
   const [openSection,setOpenSection] = useState(null); // null = экран выбора этапа
   const [viewMode,setViewMode] = useState('catalog'); // 'catalog' | 'selected' — просмотр уже отмеченных позиций без экспорта/печати
+  const [flatView,setFlatView] = useState(false); // false = по одному этапу за раз (карточки), true = все разделы одним списком
   const [discount,setDiscount] = useState(()=>initialActiveProject.discount ?? 0);
   const [objName,setObjName] = useState(()=>initialActiveProject.name || 'Объект без названия');
   const [objMeta,setObjMeta] = useState(()=>initialActiveProject.objMeta ?? '');
   const [stampOpen,setStampOpen] = useState(()=> typeof window==='undefined' || window.innerWidth>820); // на мобильном по умолчанию свёрнута — иначе перекрывает весь экран, в том числе подсказку для нового пользователя
+  const [theme,setTheme] = useState(()=>{
+    try{ return localStorage.getItem('smeta-theme') || 'light'; }catch(e){ return 'light'; }
+  });
+  useEffect(()=>{
+    document.documentElement.setAttribute('data-theme', theme);
+    try{ localStorage.setItem('smeta-theme', theme); }catch(e){}
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if(meta) meta.setAttribute('content', theme==='dark' ? '#171512' : '#1A2744');
+  },[theme]);
+  function toggleTheme(){ setTheme(t=>t==='dark'?'light':'dark'); }
   const [toolsExpanded,setToolsExpanded] = useState(false); // на мобильном панель инструментов свёрнута по умолчанию — иначе съедает весь экран (topbar прилипающий)
   const [projectsOpen,setProjectsOpen] = useState(false); // модалка «Мои сметы»
+  const [roomActionsOpen,setRoomActionsOpen] = useState(false); // выпадающее меню «Действия с помещением» (Дублировать/Скопировать/Шаблоны)
+  const roomActionsRef = useRef(null);
+  useEffect(()=>{
+    if(!roomActionsOpen) return;
+    // Закрытие по клику вне меню — через слушатель на document, а не через фон-подложку:
+    // подложка с position:fixed внутри topbar не работает корректно, потому что backdrop-filter
+    // на topbar создаёт для неё свой "контейнер" размером с сам topbar, а не во весь экран.
+    function onDocClick(e){
+      if(roomActionsRef.current && !roomActionsRef.current.contains(e.target)) setRoomActionsOpen(false);
+    }
+    document.addEventListener('mousedown', onDocClick);
+    return ()=>document.removeEventListener('mousedown', onDocClick);
+  },[roomActionsOpen]);
   const [lastSaved,setLastSaved] = useState(null);
 
   // Синхронизация: как только меняется рабочее состояние текущей сметы — обновляем её запись
@@ -545,12 +594,12 @@ function App(){
   },[rooms,discount,objName,objMeta,active,activeProjectId]);
 
   useEffect(()=>{
-    const state = {version:2, overrides, customRows, hidden, projects, activeProjectId, savedAt:Date.now()};
+    const state = {version:2, overrides, customRows, hidden, projects, activeProjectId, templates, savedAt:Date.now()};
     try{
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(state));
       setLastSaved(state.savedAt);
     }catch(e){ /* хранилище недоступно или переполнено — работа продолжается без сохранения */ }
-  },[overrides,customRows,hidden,projects,activeProjectId]);
+  },[overrides,customRows,hidden,projects,activeProjectId,templates]);
 
   // ---- Undo/redo (Ctrl+Z / Ctrl+Shift+Z): история снимков состава сметы. Не трогает чисто
   // навигационные вещи (какая вкладка/раздел открыты) — только то, что реально меняет смету. ----
@@ -1010,6 +1059,42 @@ function App(){
     closeCopyModal();
   }
 
+  // ---- Шаблоны помещений: набор отмеченных позиций (с их формулами количества, не готовыми числами),
+  // сохранённый под именем и переиспользуемый на ЛЮБОМ помещении в любой момент — в отличие от
+  // «Скопировать в...», не требует существования исходного помещения-донора. Позиции с автопривязкой
+  // остаются на автопривязке (пересчитаются под геометрию помещения, где применяется шаблон), позиции
+  // с вручную введённым количеством копируются как есть — ровно та же логика, что и при копировании. ----
+  function saveAsTemplate(){
+    const pickedEntries = Object.entries(room.picks).filter(([,p])=>p&&p.on);
+    if(pickedEntries.length===0){ alert('В этом помещении нет отмеченных позиций, чтобы сохранить как шаблон.'); return; }
+    const name = window.prompt('Название шаблона:', room.name || '');
+    if(!name || !name.trim()) return;
+    const items = pickedEntries.map(([id,p])=>({catalogId:Number(id), qty:p.qty}));
+    setTemplates(ts=>[...ts, {id:genProjectId(), name:name.trim(), items, createdAt:Date.now()}]);
+  }
+  function applyTemplate(tpl){
+    const prevPicks = {...room.picks};
+    const picks = {...room.picks};
+    let applied=0, missing=0;
+    tpl.items.forEach(({catalogId,qty})=>{
+      if(!ALL_ROWS.some(r=>r[0]===catalogId)){ missing++; return; }
+      picks[catalogId] = {on:true, qty};
+      applied++;
+    });
+    updateRoom({picks});
+    showUndo(
+      `Шаблон «${tpl.name}» применён — ${applied} поз.`+(missing>0?`, ${missing} пропущено (нет в прайс-листе)`:''),
+      ()=>{ updateRoom({picks:prevPicks}); }
+    );
+    setTemplatesOpen(false);
+  }
+  function deleteTemplate(id){
+    const tpl = templates.find(t=>t.id===id);
+    if(!tpl) return;
+    if(!window.confirm(`Удалить шаблон «${tpl.name}»?`)) return;
+    setTemplates(ts=>ts.filter(t=>t.id!==id));
+  }
+
   // ---- Undo-тост: используется вместо блокирующих confirm() для удаления позиций/помещений ----
   const undoTimerRef = useRef(null);
   const [undoState,setUndoState] = useState(null); // {message, onUndo}
@@ -1194,6 +1279,14 @@ function App(){
       const picks={...r.picks}; const cur=picks[rowId]||{on:true,qty:''};
       picks[rowId]={...cur,qty:val}; return {...r,picks};
     }));
+  }
+  // Цена — общее свойство самой позиции каталога (не помещения), поэтому меняем прямо в customRows,
+  // без открытия формы редактирования — это самое частое точечное изменение, ему не место за модалкой.
+  function setItemPrice(rowId,raw){
+    const trimmed = (raw||'').trim();
+    const newPrice = trimmed==='' ? null : toNum(trimmed);
+    if(trimmed!=='' && (isNaN(newPrice) || newPrice<0)) return; // некорректный ввод — тихо игнорируем, прежняя цена остаётся
+    setCustomRows(cs=>cs.map(r=> r[0]===rowId ? [r[0],r[1],r[2],r[3],r[4],newPrice,r[6],r[7]] : r));
   }
   function hideRow(rowId){
     setHidden(h=>({...h,[rowId]:true}));
@@ -1526,7 +1619,13 @@ function App(){
               title={qtyInvalid?'Количество должно быть числом ≥ 0':undefined}
               onChange={e=>setQty(id,e.target.value)}/>
           </span>
-          <span className={"rprice"+(price==null?' missing':'')}>{price!=null?fmt(price)+' ₽':'нет цены'}</span>
+          <span className={"rprice"+(price==null?' missing':'')}>
+            <input key={id+'-price-'+price} type="text" inputMode="decimal" placeholder="нет цены"
+              defaultValue={price!=null?String(price):''}
+              onBlur={e=>setItemPrice(id,e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); }}/>
+            {price!=null && <span className="rprice-suffix">₽</span>}
+          </span>
           <span className={"rsum"+(qtyInvalid?' invalid':'')}>{sum!=null?fmt(sum)+' ₽':(qtyInvalid?'проверьте кол-во':'—')}</span>
         </div>
       </div>
@@ -1542,6 +1641,7 @@ function App(){
             <h1>Смета</h1>
             <span>калькулятор · {visibleRows.length} {pluralRu(visibleRows.length,['позиция','позиции','позиций'])}{hiddenList.length>0?` · скрыто ${hiddenList.length}`:''}</span>
             <div className="topbar-tools">
+              <button className="theme-toggle" onClick={toggleTheme} title={theme==='dark'?'Включить светлую тему':'Включить тёмную тему'} aria-label="Переключить тему">{theme==='dark'?'☀':'☾'}</button>
               <button className="btn-tool" onClick={undo} disabled={!canUndo} title="Отменить последнее изменение (Ctrl+Z)">↶ Отменить</button>
               <button className="btn-tool" onClick={redo} disabled={!canRedo} title="Повторить отменённое изменение (Ctrl+Shift+Z)">↷ Повторить</button>
               <button className="tools-toggle" onClick={()=>setToolsExpanded(v=>!v)}>{toolsExpanded?'Скрыть ✕':'⋯ Ещё'}</button>
@@ -1574,8 +1674,15 @@ function App(){
             <button className="tab-add" onClick={addRoom} title="Добавить новое пустое помещение">+</button>
           </div>
           <div className="tabs-actions">
-            <button className="tab-dup" onClick={duplicateRoom} title="Дублировать текущее помещение вместе с выбранными позициями">⧉ Дублировать</button>
-            <button className="tab-copy" onClick={openCopyModal} title="Скопировать отмеченные позиции этого помещения в другие, с пересчётом количества под их геометрию">📋 Скопировать в...</button>
+            <div className="room-actions-wrap" ref={roomActionsRef}>
+              <button className="tab-copy" onClick={()=>setRoomActionsOpen(v=>!v)}>⋮ Действия с помещением</button>
+              {roomActionsOpen &&
+                <div className="room-actions-menu">
+                  <button onClick={()=>{ duplicateRoom(); setRoomActionsOpen(false); }} title="Дублировать текущее помещение вместе с выбранными позициями">⧉ Дублировать помещение</button>
+                  <button onClick={()=>{ openCopyModal(); setRoomActionsOpen(false); }} title="Скопировать отмеченные позиции этого помещения в другие, с пересчётом количества под их геометрию">📋 Скопировать в другие...</button>
+                  <button onClick={()=>{ setTemplatesOpen(true); setRoomActionsOpen(false); }} title="Сохранить набор отмеченных позиций как шаблон, или применить уже сохранённый шаблон к этому помещению">💾 Шаблоны</button>
+                </div>}
+            </div>
           </div>
         </div>
       </div>
@@ -1654,6 +1761,10 @@ function App(){
                   );
                 })}
               </div>}
+          </div>
+          <div className="flat-toggle" title="Как показывать каталог: по одному этапу за раз, или все разделы сразу одним списком">
+            <button className={!flatView?'on':''} onClick={()=>setFlatView(false)}>По этапам</button>
+            <button className={flatView?'on':''} onClick={()=>setFlatView(true)}>Всё сразу</button>
           </div>
           <div className={"chip"+(tagFilter==='Все'?' active':'')} onClick={()=>setTagFilter('Все')}>Все</div>
           {TAGS.map(t=>{
@@ -1737,7 +1848,7 @@ function App(){
               <div className="selected-total">Итого по помещению «{room.name}»: {fmt(totals[active].sum)} ₽</div>
             </>
           )
-        ) : browsingMode ? (
+        ) : (browsingMode && !flatView) ? (
           openSection===null ? (
             <div className="stage-picker">
               {sectionSummary.length===0 ? (
@@ -1985,6 +2096,37 @@ function App(){
             <div className="wizard-actions">
               <button className="wizard-save" onClick={runCopyToRooms}>Скопировать</button>
               <button className="wizard-cancel" onClick={closeCopyModal}>Отмена</button>
+            </div>
+          </div>
+        </div>}
+
+      {templatesOpen &&
+        <div className="wizard-overlay" onMouseDown={e=>{ if(e.target===e.currentTarget) setTemplatesOpen(false); }}>
+          <div className="wizard-modal">
+            <div className="wizard-head">
+              <h3>Шаблоны помещений</h3>
+              <button className="wizard-close" onClick={()=>setTemplatesOpen(false)} aria-label="Закрыть">×</button>
+            </div>
+            <div className="wizard-body">
+              <div className="wnote">
+                Шаблон — это набор отмеченных позиций с их формулами количества, сохранённый под именем.
+                Применяется к любому помещению в любой момент, количество пересчитывается под его геометрию —
+                как «Скопировать в...», но не требует существования исходного помещения. Шаблоны общие на все сметы.
+              </div>
+              <button className="btn-tool" onClick={saveAsTemplate} style={{alignSelf:'flex-start'}}>+ Сохранить текущее помещение как шаблон</button>
+              {templates.length===0 && <div className="wnote">Пока нет ни одного шаблона.</div>}
+              {templates.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(tpl=>(
+                <div key={tpl.id} className="project-row">
+                  <div className="project-info">
+                    <div className="project-name">{tpl.name}</div>
+                    <div className="project-meta">{tpl.items.length} {pluralRu(tpl.items.length,['позиция','позиции','позиций'])}</div>
+                  </div>
+                  <div className="project-actions">
+                    <button className="btn-tool" onClick={()=>applyTemplate(tpl)}>Применить</button>
+                    <button className="btn-tool btn-newproj" onClick={()=>deleteTemplate(tpl.id)} title="Удалить шаблон" aria-label={`Удалить шаблон: ${tpl.name}`}>🗑</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>}
